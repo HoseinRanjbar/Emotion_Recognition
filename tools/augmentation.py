@@ -52,7 +52,7 @@ def save_augmented_video(frames, output_path, fps=30):
     out.release()
 
 # Function to randomly select videos and apply augmentations
-def augment_class_videos(csv_file, target_class, num_videos, output_dir):
+def augment_class_videos(csv_file, target_class, num_videos, output_dir, new_csv_file):
     # Load the CSV
     df = load_csv(csv_file)
     
