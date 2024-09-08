@@ -84,5 +84,17 @@ def augment_class_videos(csv_file, target_class, num_videos, output_dir):
         
         print(f"Augmented video saved: {aug_output_path}")
 
+        new_rows.append([aug_output_path, None, None, None, target_class, row['Sentiment'], None, None, None, None, None, None])
+
+    # Create a DataFrame for the new rows with all required columns
+    new_df = pd.DataFrame(new_rows, columns=['file_path', 'Sr No.', 'Utterance', 'Speaker', 'Emotion', 'Sentiment', 'Dialogue_ID', 'Utterance_ID', 'Season', 'Episode', 'StartTime', 'EndTime'])
+    
+    # Append the new rows to the original dataframe
+    updated_df = pd.concat([df, new_df], ignore_index=True)
+    
+    # Save the updated dataframe to a new CSV file
+    updated_df.to_csv(new_csv_file, index=False)
+    print(f"CSV file updated and saved as {new_csv_file}")
+
 # Example usage
-augment_class_videos('./data/train.csv', 'anger', 10, './data/augmented_videos')
+augment_class_videos('./data/train.csv', 'anger', 10, './data/augmented_videos', './data/updated_train.csv')
