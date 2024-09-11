@@ -3,7 +3,6 @@ import time
 import os
 import torch
 import torch.nn
-from torch.autograd import Variable
 import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
@@ -13,7 +12,6 @@ import datetime as dt
 from torch.optim.lr_scheduler import StepLR, MultiStepLR
 #Progress bar to visualize training progress
 import progressbar
-import matplotlib.pyplot as plt
 
 #Plotting
 from tools.viz import learning_curve_slr
@@ -24,37 +22,29 @@ import GPUtil
 from transformer import make_model as TRANSFORMER
 from dataloader import loader
 from tools.utils import Batch, NoamOpt
-###
+
+##############
 # Arg parsing
 ##############
 
 parser = argparse.ArgumentParser(description='Training the transformer-like network')
 
-parser.add_argument('--data', type=str, default=os.path.join('data','phoenix-2014.v3','phoenix2014-release','phoenix-2014-multisigner'),
-                   help='location of the data corpus')
+parser.add_argument('--data', help='location of the dataset')
 
-parser.add_argument('--remove_bg_training',type=bool, default= False)
+parser.add_argument('--fixed_padding', type=int, default=None, help='None/64')
 
-parser.add_argument('--remove_bg_test',type=bool, default= False)
+parser.add_argument('--num_classes', type=int, help='Number of classes')
 
+parser.add_argument('--classifier_hidden_size', type=int, default=512)
 
-parser.add_argument('--fixed_padding', type=int, default=None,
-                    help='None/64')
-
-parser.add_argument('--num_classes', type=int)
-
-parser.add_argument('--classifier_hidden_size', type=int, default=256)
-
-parser.add_argument('--recognition', type=int, default='emotion')
+parser.add_argument('--recognition', type=str, default='sentiment')
 
 parser.add_argument('--lookup_table', type=str, default=os.path.join('data','slr_lookup.txt'),
                     help='location of the words lookup table')
 
-parser.add_argument('--rescale', type=int, default=224,
-                    help='rescale data images.')
+parser.add_argument('--rescale', type=int, default=224, help='rescale data images.')
 
-parser.add_argument('--random_drop_probability', type=float, default=False,
-                    help='probability of frame random drop/0-1 or None')
+parser.add_argument('--random_drop_probability', type=float, default=False, help='probability of frame random drop/0-1 or None')
 
 parser.add_argument('--uniform_drop_probability', type=float, default=True,
                     help='probability of frame random drop/0-1 or None')
@@ -69,10 +59,10 @@ parser.add_argument('--show_sample', action='store_true',
 parser.add_argument('--optimizer', type=str, default='ADAM',
                     help='optimization algo to use; SGD, SGD_LR_SCHEDULE, ADAM / NOAM')
 
-parser.add_argument('--scheduler', type=str, default=None,
+parser.add_argument('--scheduler', type=str, default='multi-step',
                     help='Type of scheduler, multi-step or stepLR')
 
-parser.add_argument('--milestones', default="15,30", type=str,
+parser.add_argument('--milestones', default="10,25", type=str,
                     help="milestones for MultiStepLR or stepLR")
 
 parser.add_argument('--weight_decay', type= float , default = 5e-5)
@@ -92,11 +82,14 @@ parser.add_argument('--num_layers', type=int, default=2,
 parser.add_argument('--n_heads', type=int, default=8,
                     help='number of self attention heads')
 
+parser.add_argument('--window_size', type=int, default=10,
+                    help='number of self attention heads')
+
 #Pretrained weights
 parser.add_argument('--pretrained', type=bool, default=True,
                     help='embedding layers are pretrained using imagenet')
 
-parser.add_argument('--full_pretrained', type=str, default=None,
+parser.add_argument('--full_pretrained', type=str, default=False,
                     help='Full frame CNN pretrained')
 
 parser.add_argument('--hand_pretrained', type=str, default=None,
@@ -114,7 +107,7 @@ parser.add_argument('--emb_network', type=str, default='mb2',
 parser.add_argument('--image_type', type=str, default='rgb',
                     help='Train on rgb/grayscale images')
 
-parser.add_argument('--num_epochs', type=int, default=100,
+parser.add_argument('--num_epochs', type=int, default=30,
                     help='number of epochs to stop after')
 
 parser.add_argument('--dp_keep_prob', type=float, default=0.8,
@@ -162,8 +155,6 @@ parser.add_argument('--hand_stats', type=str, default=None,
 
 
 #----------------------------------------------------------------------------------------
-
-
 ## SET EXPERIMENTATION AND SAVE CONFIGURATION
 
 #Same seed for reproducibility)
@@ -178,7 +169,6 @@ args = parser.parse_args()
 #Set the random seed manually for reproducibility.
 torch.manual_seed(args.seed)
 
-#experiment_path = PureWindowsPath('EXPERIMENTATIONS\\' + start_date)
 experiment_path = os.path.join(args.save_dir,start_date)
 
 # Creates an experimental directory and dumps all the args to a text file
@@ -209,8 +199,6 @@ else:
     print("WARNING: Training on CPU, this will likely run out of memory, Go buy yourself a GPU!")
     device = torch.device("cpu")
 #--------------------------------------------------------------------------------
-
-
 #Computation for one epoch
 def run_epoch(model, data, is_train=False, device='cuda:0', n_devices=1):
 
@@ -277,14 +265,21 @@ def run_epoch(model, data, is_train=False, device='cuda:0', n_devices=1):
 
         else:
             #Zeroing gradients
-            model.zero_grad()
+            optimizer.zero_grad()
 
             #Shape(batch_size, tgt_seq_length, tgt_vocab_size)
             #NOTE: no need for trg if we dont have a decoder
             comb_out, class_logits, output_hand = model.forward(x, batch.src_mask, batch.rel_mask, hand_regions)
 
         # Calculate loss (cross-entropy loss for classification)
-        loss_fn = nn.CrossEntropyLoss()
+        #loss_fn = nn.CrossEntropyLoss()
+        if args.recognition == 'emotion':
+            class_weights = torch.tensor([1.1321, 2.4096, 2.4236, 0.72026, 0.4634, 1.2771, 1.0418], dtype=torch.float32)
+        elif args.recognition == 'sentiment':
+            class_weights = torch.tensor([0.7822,1.08133,1.2551], dtype=torch.float32)
+        class_weights = class_weights.to(device)
+        loss_fn = nn.CrossEntropyLoss(weight=class_weights)
+
         y = y.squeeze(1)
         loss = loss_fn(class_logits, y)
 
@@ -293,6 +288,7 @@ def run_epoch(model, data, is_train=False, device='cuda:0', n_devices=1):
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1)  # Optional: clip gradients
             optimizer.step()
+            optimizer.zero_grad()
 
         # Calculate accuracy
         _, preds = torch.max(class_logits, 1)
@@ -301,9 +297,6 @@ def run_epoch(model, data, is_train=False, device='cuda:0', n_devices=1):
         total_loss += loss.item()
         total_accuracy += accuracy
         count += 1
-        # x_lengths = torch.IntTensor(x_lengths)
-        # y_lengths = torch.IntTensor(y_lengths)
-
 
      # Calculate average loss and accuracy for the epoch
     avg_loss = total_loss / count
@@ -318,7 +311,6 @@ def run_epoch(model, data, is_train=False, device='cuda:0', n_devices=1):
 #-------------------------------------------------------------------------------------------------------
 
 ### LOAD DATALOADERS
-
 # In debug mode, try batch size of 1
 if args.debug:
     batch_size = 1
@@ -339,9 +331,9 @@ else:
 loss_fn = nn.CrossEntropyLoss()
 
 #train_path, valid_path, test_path = path_data(data_path=args.data)
-train_csv = pd.read_csv(os.path.join(args.data, 'tools/data','train.csv'))
-test_csv = pd.read_csv(os.path.join(args.data, 'tools/data','test.csv'))
-val_csv = pd.read_csv(os.path.join(args.data, 'tools/data','dev.csv'))
+train_csv = pd.read_csv(os.path.join('./tools/data','train.csv'))
+test_csv = pd.read_csv(os.path.join('./tools/data','test.csv'))
+val_csv = pd.read_csv(os.path.join('./tools/data','dev.csv'))
 
 with open(args.lookup_table, 'r') as file:
     lookup_table = json.load(file)
@@ -358,7 +350,6 @@ train_dataloader, train_size = loader(csv_file=train_csv,
                 root_dir=args.data,
                 lookup_table=lookup_table,
                 recognition=args.recognition,
-                remove_bg=args.remove_bg_training,
                 rescale = args.rescale,
                 batch_size = batch_size,
                 num_workers = args.num_workers,
@@ -378,9 +369,8 @@ valid_dataloader, valid_size = loader(csv_file=val_csv,
                 root_dir=args.data,
                 lookup_table=lookup_table,
                 recognition=args.recognition,
-                remove_bg=args.remove_bg_test,
                 rescale = args.rescale,
-                batch_size = args.batch_size,
+                batch_size = batch_size,
                 num_workers = args.num_workers,
                 random_drop= args.random_drop_probability,
                 uniform_drop= args.uniform_drop_probability,
@@ -402,7 +392,7 @@ print(dataset_sizes)
 #-----------------------------------------------------------------------------------------------------------------
 
 #Load the whole model
-model = TRANSFORMER(num_classes=args.num_classes, n_stacks=args.num_layers, n_units=args.hidden_size, n_heads=args.n_heads ,d_ff=args.d_ff, dropout=1.-args.dp_keep_prob, image_size=args.rescale, pretrained=args.pretrained,
+model = TRANSFORMER(num_classes=args.num_classes, n_stacks=args.num_layers, n_units=args.hidden_size, n_heads=args.n_heads , window_size = args.window_size,d_ff=args.d_ff, dropout=1.-args.dp_keep_prob, image_size=args.rescale, pretrained=args.pretrained,
                             classifier_hidden_dim= args.classifier_hidden_size,emb_type=args.emb_type, emb_network=args.emb_network, full_pretrained=args.full_pretrained, hand_pretrained=args.hand_pretrained, freeze_cnn=args.freeze_cnn, channels=channels)
 trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
@@ -443,10 +433,6 @@ else:
         print("Can't use distributed training since you have a single GPU!")
         quit(0)
 
-
-#print("Loading to GPUs")
-#print(GPUtil.showUtilization())
-
 train_ppls = []
 train_losses = []
 train_accuracies = []
@@ -457,7 +443,6 @@ times = []
 
 if args.optimizer == 'ADAM':
     optimizer = torch.optim.Adam(model.parameters(), lr=args.initial_lr , weight_decay = args.weight_decay)
-    #optimizer = torch.optim.Adam(model.parameters(), lr=args.initial_lr)
 
 elif args.optimizer == 'noam':
     optimizer = NoamOpt(args.hidden_size, 1, 400, torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
@@ -506,7 +491,6 @@ for epoch in range(start_epoch, num_epochs):
     start = time.time()
 
     print('\nEPOCH '+str(epoch)+' ------------------')
-    #print('LR',scheduler.get_lr())
     print(optimizer.param_groups[0]['lr'])
     # RUN MODEL ON TRAINING DATA
     train_loss, train_accuracy = run_epoch(model, train_dataloader, True, device=device)
@@ -572,7 +556,6 @@ for epoch in range(start_epoch, num_epochs):
         with open (os.path.join(args.save_dir, 'log.txt'), 'a') as f_:
                 f_.write(log_str+ '\n')
 
-
         #SAVE LEARNING CURVES
         lc_path = os.path.join(args.save_dir, 'learning_curves.npy')
         print('\nDONE\n\nSaving learning curves to '+lc_path)
@@ -598,7 +581,6 @@ for epoch in range(start_epoch, num_epochs):
                 'best_accuracy': best_accuracy_so_far
                 },
                 os.path.join(args.save_dir, 'epoch_'+str(epoch)+'_accuracy_'+str(val_accuracy)+'.pt'))
-
 
         #We reached convergence
         if(train_ppl <= 1):
