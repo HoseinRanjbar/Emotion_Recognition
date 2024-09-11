@@ -23,7 +23,7 @@ RoBERTa for text, Wav2Vec2 for speech, InceptionResNet
 for facial expressions, and a CNN+Transformer architecture
 trained from scratch for video analysis.
 
-This repository provides a PyTorch-based implementation of the paper **"Context Matters: Video-based Emotion Recognition"**. 
+This repository provides a PyTorch-based implementation of **" Video-based Emotion Recognition"**. 
 
 
 
