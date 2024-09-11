@@ -16,14 +16,15 @@
 
 ## Introduction
 
-Emotion recognition and sentiment analysis are pivotal tasks
-in speech processing and machine learning, particularly in
-real-world scenarios involving multi-party, conversational
-data. This paper presents a multimodal approach to tackle
-these challenges, on the MELD dataset. We propose a system
+This paper presents a multimodal approach to tackle
+emotion recognition and sentiment analysis, on the MELD dataset. We propose a system
 that integrates four key modalities using pre-trained models:
 RoBERTa for text, Wav2Vec2 for speech, InceptionResNet
 for facial expressions, and a CNN+Transformer architecture
-trained from scratch for video frame analysis.
+trained from scratch for video analysis.
+
+This repository provides a PyTorch-based implementation of the paper **"Context Matters: Video-based Emotion Recognition"**. 
+
+
 
 
