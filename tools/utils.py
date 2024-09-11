@@ -1,52 +1,9 @@
-
 import os 
 import numpy as np 
 import torch 
 import torch.nn as nn 
 import torch.optim 
 from torch.autograd import Variable
-
-
-#Return paths for image, annotation and hands
-#For both datasets Phoenix-2014-T and Pheonix-2014
-def path_data(data_path=None, task='SLR', features_type='features', hand_query=None):
-
-    path = os.path.join(features_type,'fullFrame-210x260px')
-
-    #Path for the full frame
-    train_data = os.path.join(data_path, path,"train")
-    valid_data = os.path.join(data_path, path,"dev")
-    test_data = os.path.join(data_path, path,"test")
-
-    hand_path = os.path.join(features_type,'trackedRightHand-92x132px')
-
-    #Path for hands cropped images
-    if(hand_query):
-        train_hand = os.path.join(data_path, hand_path, "train")
-        valid_hand = os.path.join(data_path, hand_path, "dev")
-        test_hand = os.path.join(data_path, hand_path, "test")
-    else:
-        train_hand = None
-        valid_hand = None
-        test_hand = None
-
-    if(task=='SLR'):
-       annotations = os.path.join('annotations','manual')
-
-       train_annotations = os.path.join(data_path, annotations, "train.corpus.csv")
-       valid_annotations = os.path.join(data_path, annotations, "dev.corpus.csv")
-       test_annotations = os.path.join(data_path, annotations, "test.corpus.csv")
-
-    elif(task=='SLT'):
-        annotations = os.path.join('annotations','manual','PHOENIX-2014-T.')
-
-        train_annotations = os.path.join(data_path, annotations+"train.corpus.csv")
-        valid_annotations = os.path.join(data_path, annotations+"dev.corpus.csv")
-        test_annotations = os.path.join(data_path, annotations+"test.corpus.csv")
-
-    #Returns the full frame path + annotations of (train, dev, test)
-    return (train_data, train_annotations, train_hand), (valid_data, valid_annotations, valid_hand), (test_data, test_annotations, test_hand)
-
 
 #Avoid seeing future words
 #Prediction at position i, can only depend on inputs less than i
@@ -144,82 +101,6 @@ class Batch:
         trg_mask = trg_mask.type(torch.uint8)
         return trg_mask
 
-#Use this to produce translation in validation
-def greedy_decode(model, src, hand_regions, rel_mask, src_mask, max_len, start_symbol=1, device='cuda:0', n_devices=1):
-
-    #If we have rel masking
-    if(type(rel_mask) != type(None)):
-        src_mask = rel_mask
-
-    memory = model.src_emb(src)
-
-    if(type(hand_regions) != type(None)):
-        hand_emb = model.hand_emb(hand_regions)
-
-    #Positional info
-    memory = model.position(memory)
-
-    #(batch, seq_length/feature_map_length, emb_size)
-    if(n_devices == 1):
-        memory = model.encode(memory, None, src_mask)
-
-    else:
-        #NOTE: in case you are using dataparallel object
-        memory = model.module.encode(memory, None, src_mask)
-
-    ys = []
-
-    #Loop over the batch
-    for b in range(src.shape[0]):
-        #Target input of decoder
-        y = torch.ones((1, 1), dtype=torch.int64).fill_(start_symbol).to(device)
-
-        m = memory[b].unsqueeze(0)
-
-        if(type(src_mask) != type(None)):
-            mask = src_mask[b].unsqueeze(0)
-        else:
-            mask = None
-
-        for i in range(max_len-1):
-
-            trg_mask = subsequent_mask(y.size(1))
-
-            if(n_devices == 1):
-                out = model.decode(m,
-                           Variable(y),
-                           mask,
-                           Variable(trg_mask.to(device)))
-            else:
-                #NOTE: in case you are using dataparallel object
-                out = model.module.decode(m,
-                           Variable(y),
-                           mask,
-                           Variable(trg_mask.to(device)))
-
-            if(n_devices == 1):
-                prob = model.output_layer(out[:, -1])
-            else:
-                prob = model.module.output_layer(out[:, -1])
-
-            #Take the last word
-            _, next_word = torch.max(prob, dim = -1)
-            next_word = next_word.data[0]
-
-            #Add word
-            y = torch.cat([y, torch.ones((1, 1), dtype=torch.int64).fill_(next_word).to(device)], dim=1)
-
-            #If it reachs <eos> then break
-            if(next_word == 2):
-                break
-
-        #Get rid of <sos> token
-        ys.append(y[0, 1:])
-
-    del out, prob, y, m, src_mask
-
-    return ys
-
 
 class NoamOpt:
     "Optim wrapper that implements rate."
@@ -255,7 +136,6 @@ def get_std_opt(model):
     #return NoamOpt(model.src_embed[0].d_model, 2, 4000,
      return NoamOpt(1280, 2, 400,
             torch.optim.Adam(model.parameters(), lr=0, betas=(0.9, 0.98), eps=1e-9))
-
 
 
 #http://nlp.seas.harvard.edu/2018/04/03/attention.html#label-smoothing
