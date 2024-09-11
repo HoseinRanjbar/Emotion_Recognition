@@ -12,4 +12,18 @@
 </p>
 
 
+---
+
+## Introduction
+
+Emotion recognition and sentiment analysis are pivotal tasks
+in speech processing and machine learning, particularly in
+real-world scenarios involving multi-party, conversational
+data. This paper presents a multimodal approach to tackle
+these challenges, on the MELD dataset. We propose a system
+that integrates four key modalities using pre-trained models:
+RoBERTa for text, Wav2Vec2 for speech, InceptionResNet
+for facial expressions, and a CNN+Transformer architecture
+trained from scratch for video frame analysis.
+
 
