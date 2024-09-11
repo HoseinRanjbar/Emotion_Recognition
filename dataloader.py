@@ -1,6 +1,6 @@
 #############################################
 #                                           #
-# Load sequential data from PHOENIX-2014    #
+#     Load sequential data from Dataset     #
 #                                           #
 #############################################
 
@@ -15,7 +15,6 @@ import cv2
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 from tools.indexs_list import idxs
-
 
 #Ignore warnings
 import warnings
@@ -64,7 +63,6 @@ def collate_fn(data, fixed_padding=None, pad_index=1232):
     src_seqs = []
     trg_seqs = []
     right_hands = []
-    left_hands = []
 
     for element in data:
         src_seqs.append(element['images'])
@@ -91,14 +89,13 @@ def collate_fn(data, fixed_padding=None, pad_index=1232):
 class MELDDataset(Dataset):
     """Sequential Sign language images dataset."""
 
-    def __init__(self, csv_file, root_dir, lookup_table, remove_bg, random_drop, uniform_drop, istrain, transform=None,rescale=224, sos_index=1, eos_index=2, unk_index=0, fixed_padding=None, hand_dir=None, hand_transform=None, channels=3):
+    def __init__(self, csv_file, root_dir, lookup_table, recognition, random_drop, uniform_drop, istrain, transform=None,rescale=224, sos_index=1, eos_index=2, unk_index=0, fixed_padding=None, hand_dir=None, hand_transform=None, channels=3):
 
         #Get data
-        #self.annotations = pd.read_csv(csv_file)
         self.annotations = csv_file
         self.root_dir = root_dir
         self.lookup_table = lookup_table
-        self.remove_bg= remove_bg
+        self.recognition = recognition
         self.hand_dir = hand_dir
         self.random_drop = random_drop
         self.uniform_drop = uniform_drop
@@ -124,20 +121,19 @@ class MELDDataset(Dataset):
         #Retrieve the name id of sequence from csv annotations
         name = self.annotations.iloc[idx]['file_path']
 
-        video_path = os.path.join(self.root_dir, name)
+        video_path = os.path.join(self.root_dir, name[2:])
+        #print(video_path)
         # Create a VideoCapture object
         cap = cv2.VideoCapture(video_path)
         frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-       
+
         if self.istrain:
             indexs = idxs(frame_count,random_drop=self.random_drop,uniform_drop=self.uniform_drop)
             seq_length = len(indexs)
         else:
-            if self.random_drop:
-                indexs = idxs(frame_count,random_drop=None,uniform_drop= self.random_drop)
-            else:
-                indexs = idxs(frame_count,random_drop=None,uniform_drop= self.uniform_drop)
+            indexs = idxs(frame_count,random_drop=False,uniform_drop=True)
             seq_length = len(indexs)
+            
 
         trsf_images = torch.zeros((seq_length, self.channels, self.rescale, self.rescale))
 
@@ -148,9 +144,7 @@ class MELDDataset(Dataset):
         else:
             hand_images = None
 
-        #Save the images of seq
-        i=0
-        j=0
+        i = j = 0
         # Loop through the video frames
         while True:
 
@@ -177,14 +171,16 @@ class MELDDataset(Dataset):
 
         cap.release()
         #Retrive the translation (ground truth text translation) from csv annotations
-        sign = self.annotations.iloc[idx]['class']
-
+        if self.recognition == 'emotion':
+            sign = self.annotations.iloc[idx]['Emotion']
+        elif self.recognition == 'sentiment':
+            sign = self.annotations.iloc[idx]['Sentiment']
+        
         # Convert the ground truth label to numeric using the lookup table
         label = self.lookup_table.get(sign, -1)  # Default to -1 if the class is not in the lookup table
         label = torch.tensor([label], dtype=torch.long).squeeze()
 
         #NOTE: full frame seq and hand seq should be with the same seq length
-        #sample = {'images': trsf_images, 'right_hands':hand_images, 'translation': trans}
         return {'images': trsf_images, 'right_hands':hand_images, 'translation': label}
         #return sample
 
@@ -224,7 +220,7 @@ class SubtractMeans(object):
         return image
 
 
-def loader(csv_file, root_dir, lookup_table, recognition, remove_bg, rescale, batch_size, num_workers, random_drop, uniform_drop, show_sample, istrain=False, mean_path='FulFrame_Mean_Image_227x227.npy', fixed_padding=None, hand_dir=None, data_stats=None, hand_stats=None, channels=3):
+def loader(csv_file, root_dir, lookup_table, recognition, rescale, batch_size, num_workers, random_drop, uniform_drop, show_sample, istrain=False, mean_path='FulFrame_Mean_Image_227x227.npy', fixed_padding=None, hand_dir=None, data_stats=None, hand_stats=None, channels=3):
 
     #Note: when using random cropping, this with reshape images with randomCrop size instead of rescale
     if(istrain):
@@ -313,7 +309,6 @@ def loader(csv_file, root_dir, lookup_table, recognition, remove_bg, rescale, ba
                                             root_dir=root_dir,
                                             lookup_table=lookup_table,
                                             recognition = recognition,
-                                            remove_bg=remove_bg,
                                             random_drop=random_drop,
                                             uniform_drop=uniform_drop,
                                             transform=trans,
