@@ -58,3 +58,13 @@ pip install -r requirements.txt
 mkdir pretrained_model
 sh scripts/download_weights.sh
 ```
+
+## Usage
+
+1. Test
+   
+Use the following command to test on the MELD dataset.
+
+```bash
+python3 -u test.py --data {PATH-TO-DATASET} --model_path ./pretrained_model/BEST.pt --batch_size 1 --num_classes 7 --recognition 'emotion' --save_dir ./output --lookup_table ./tools/data/emotion_lookup_table.json --classifier_hidden_size 512
+```
