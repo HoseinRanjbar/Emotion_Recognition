@@ -23,13 +23,7 @@ RoBERTa for text, Wav2Vec2 for speech, InceptionResNet
 for facial expressions, and a MobileNet-V2 + Local Transformer architecture
 trained from scratch for video analysis. The architecture of the proposed system is depicted in the following graph.
 
-![graph_](https://github.com/user-attachments/assets/9eef444d-e881-4f2d-9517-3fb8b628da48)
-
-![psychological assistant-Page-6](https://github.com/user-attachments/assets/adfc0bb0-41ad-4ea7-82ae-89d46d0175a2)
-
-![psychological assistant-Page-6 (1)](https://github.com/user-attachments/assets/7d24e93f-62ff-4b53-b2ae-22448f54ae6f)
-
-
+<img width="1424" alt="psychological assistant-Page-6 (1)" src="https://github.com/user-attachments/assets/61811b5b-1003-4eb4-be2e-a560d0cdbbe6">
 
 
 This repository provides a PyTorch-based implementation of **Video-based Emotion Recognition**( MobileNet-V2 + Local Transformer). 
