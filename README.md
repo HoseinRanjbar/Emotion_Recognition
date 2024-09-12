@@ -20,7 +20,7 @@ This paper presents a multimodal approach to tackle
 emotion recognition and sentiment analysis, on the MELD dataset. We propose a system
 that integrates four key modalities using pre-trained models:
 RoBERTa for text, Wav2Vec2 for speech, InceptionResNet
-for facial expressions, and a CNN+Transformer architecture
+for facial expressions, and a MobileNet-V2 + Local Transformer architecture
 trained from scratch for video analysis.
 
 This repository provides a PyTorch-based implementation of **" Video-based Emotion Recognition"**. 
