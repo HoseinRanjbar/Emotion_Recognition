@@ -25,12 +25,6 @@ trained from scratch for video analysis. The architecture of the proposed system
 
 ![psychological assistant-Page-6 (2)](https://github.com/user-attachments/assets/6f1dda71-84b1-4020-b1e1-e8315cdfda15)
 
-<img width="2354" alt="github-graph" src="https://github.com/user-attachments/assets/eafc580b-c4d4-427b-aacd-53504c43dc69">
-
-
-
-
-
 This repository provides a PyTorch-based implementation of **Video-based Emotion Recognition**( MobileNet-V2 + Local Transformer). 
 
 
