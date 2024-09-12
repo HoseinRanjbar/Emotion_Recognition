@@ -41,7 +41,20 @@ cd ..
 2. Clone this repository
 
 ```bash
-git 
-cd sber-swap
+git clone https://github.com/HoseinRanjbar/Emotion_Recognition.git
+cd Emotion_Recognition
 ```
 
+
+3. Install dependent packages
+   
+```bash
+pip install -r requirements.txt
+```
+
+4. Download weights
+
+```bash
+mkdir pretrained_model
+sh scripts/download_weights.sh
+```
