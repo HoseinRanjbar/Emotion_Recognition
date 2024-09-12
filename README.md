@@ -66,5 +66,14 @@ sh scripts/download_weights.sh
 Use the following command to test on the MELD dataset.
 
 ```bash
-python3 -u test.py --data {PATH-TO-DATASET} --model_path ./pretrained_model/BEST.pt --batch_size 1 --num_classes 7 --recognition 'emotion' --save_dir ./output --lookup_table ./tools/data/emotion_lookup_table.json --classifier_hidden_size 512
+python3 -u test.py --data {PATH-TO-DATASET} --model_path ./pretrained_model/BEST.pt --num_classes 7 --recognition 'emotion' --save_dir ./output --lookup_table ./tools/data/emotion_lookup_table.json --classifier_hidden_size 512
 ```
+
+2. Training
+
+We also provide the training code as follows:
+
+```bash
+train.py --data {PATH-TO-DATASET} --batch_size 2 --num_classes 7 --recognition 'emtion' --emb_network 'mb2' --hidden_size 1280 --save_dir ./pretrained_model --lookup_table ./tools/data/sentiment_lookup_table.json --initial_lr 0.001 --num_layers 2 --dp_keep_prob 0.8 --classifier_hidden_size 512
+```
+
