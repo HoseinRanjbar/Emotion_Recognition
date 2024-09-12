@@ -21,10 +21,10 @@ emotion recognition and sentiment analysis, on the MELD dataset. We propose a sy
 that integrates four key modalities using pre-trained models:
 RoBERTa for text, Wav2Vec2 for speech, InceptionResNet
 for facial expressions, and a MobileNet-V2 + Local Transformer architecture
-trained from scratch for video analysis.
+trained from scratch for video analysis. The architecture of the proposed system is depicted in the following graph.
 
-This repository provides a PyTorch-based implementation of **" Video-based Emotion Recognition"**. 
+![Graph](https://github.com/user-attachments/assets/f6e874c9-c808-497e-a998-fab907732303)
 
-
+This repository provides a PyTorch-based implementation of **Video-based Emotion Recognition**( MobileNet-V2 + Local Transformer). 
 
 
