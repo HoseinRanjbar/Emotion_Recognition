@@ -27,4 +27,21 @@ trained from scratch for video analysis. The architecture of the proposed system
 
 This repository provides a PyTorch-based implementation of **Video-based Emotion Recognition**( MobileNet-V2 + Local Transformer). 
 
+## Instalation
+
+1. Download and extract MELD dataset 
+
+```bash
+mkdir dataset
+wget https://web.eecs.umich.edu/~mihalcea/downloads/MELD.Raw.tar.gz
+tar -xvzf MELD.Raw.tar.gz
+cd ..
+```
+
+2. Clone this repository
+
+```bash
+git 
+cd sber-swap
+```
 
