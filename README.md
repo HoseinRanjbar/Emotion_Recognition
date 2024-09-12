@@ -23,6 +23,8 @@ RoBERTa for text, Wav2Vec2 for speech, InceptionResNet
 for facial expressions, and a MobileNet-V2 + Local Transformer architecture
 trained from scratch for video analysis. The architecture of the proposed system is depicted in the following graph.
 
+![psychological assistant-Page-6 (2)](https://github.com/user-attachments/assets/6f1dda71-84b1-4020-b1e1-e8315cdfda15)
+
 
 
 
